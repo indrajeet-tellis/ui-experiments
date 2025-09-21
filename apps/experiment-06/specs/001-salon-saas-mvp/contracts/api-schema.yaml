@@ -1,0 +1,1387 @@
+openapi: 3.0.3
+info:
+  title: Salon SAAS API
+  description: Appointment management system for salon operations
+  version: 1.0.0
+  contact:
+    name: Salon SAAS Support
+    email: support@salon-saas.com
+
+servers:
+  - url: http://localhost:3001/api
+    description: Development server
+  - url: https://api.salon-saas.com
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      required: [id, email, first_name, last_name, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        phone:
+          type: string
+          pattern: '^[\+]?[1-9][\d]{0,15}$'
+        role:
+          type: string
+          enum: [OWNER, STAFF, CUSTOMER]
+        email_verified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+
+    Salon:
+      type: object
+      required: [id, name, phone, email, address_line1, city, state, postal_code, country, timezone, business_hours]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        phone:
+          type: string
+          pattern: '^[\+]?[1-9][\d]{0,15}$'
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+          format: uri
+        address_line1:
+          type: string
+          maxLength: 100
+        address_line2:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 50
+        state:
+          type: string
+          maxLength: 50
+        postal_code:
+          type: string
+          maxLength: 20
+        country:
+          type: string
+          length: 2
+        timezone:
+          type: string
+          example: "America/New_York"
+        business_hours:
+          $ref: '#/components/schemas/BusinessHours'
+        booking_advance_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+        booking_buffer_minutes:
+          type: integer
+          minimum: 0
+          maximum: 60
+        cancellation_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        is_active:
+          type: boolean
+
+    BusinessHours:
+      type: object
+      required: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+      properties:
+        monday:
+          $ref: '#/components/schemas/DayHours'
+        tuesday:
+          $ref: '#/components/schemas/DayHours'
+        wednesday:
+          $ref: '#/components/schemas/DayHours'
+        thursday:
+          $ref: '#/components/schemas/DayHours'
+        friday:
+          $ref: '#/components/schemas/DayHours'
+        saturday:
+          $ref: '#/components/schemas/DayHours'
+        sunday:
+          $ref: '#/components/schemas/DayHours'
+
+    DayHours:
+      type: object
+      required: [is_open]
+      properties:
+        is_open:
+          type: boolean
+        open_time:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "09:00"
+        close_time:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "17:00"
+        break_start:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "12:00"
+        break_end:
+          type: string
+          pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: "13:00"
+
+    Staff:
+      type: object
+      required: [id, salon_id, first_name, last_name, email, position, default_hours, color_code]
+      properties:
+        id:
+          type: string
+          format: uuid
+        salon_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          pattern: '^[\+]?[1-9][\d]{0,15}$'
+        employee_id:
+          type: string
+          maxLength: 20
+        position:
+          type: string
+          maxLength: 50
+        hire_date:
+          type: string
+          format: date
+        hourly_rate:
+          type: number
+          minimum: 0
+        commission_rate:
+          type: number
+          minimum: 0
+          maximum: 100
+        default_hours:
+          $ref: '#/components/schemas/BusinessHours'
+        color_code:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: "#FF5733"
+        is_active:
+          type: boolean
+        can_login:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [VIEW_SCHEDULE, MANAGE_OWN_APPOINTMENTS, MANAGE_ALL_APPOINTMENTS, VIEW_CUSTOMERS, MANAGE_CUSTOMERS, VIEW_REPORTS, MANAGE_SERVICES, MANAGE_STAFF]
+
+    Customer:
+      type: object
+      required: [id, salon_id, first_name, last_name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        salon_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          pattern: '^[\+]?[1-9][\d]{0,15}$'
+        date_of_birth:
+          type: string
+          format: date
+        preferred_staff_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        notes:
+          type: string
+          maxLength: 1000
+        allergies:
+          type: string
+          maxLength: 500
+        marketing_consent:
+          type: boolean
+        preferred_contact:
+          type: string
+          enum: [EMAIL, PHONE, SMS, NONE]
+        is_active:
+          type: boolean
+        last_visit:
+          type: string
+          format: date-time
+
+    Service:
+      type: object
+      required: [id, salon_id, name, category, duration_minutes, price, color_code]
+      properties:
+        id:
+          type: string
+          format: uuid
+        salon_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        category:
+          type: string
+          enum: [HAIRCUT, HAIR_COLOR, HAIR_STYLING, NAILS, FACIAL, MASSAGE, WAXING, EYEBROWS, MAKEUP, OTHER]
+        duration_minutes:
+          type: integer
+          minimum: 15
+          maximum: 480
+        price:
+          type: number
+          minimum: 0
+        buffer_before_minutes:
+          type: integer
+          minimum: 0
+          maximum: 60
+        buffer_after_minutes:
+          type: integer
+          minimum: 0
+          maximum: 60
+        color_code:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        is_active:
+          type: boolean
+        requires_deposit:
+          type: boolean
+        deposit_amount:
+          type: number
+          minimum: 0
+        cancellation_policy:
+          type: string
+          maxLength: 500
+        max_advance_booking_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+        min_advance_booking_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+
+    Appointment:
+      type: object
+      required: [id, salon_id, customer_id, staff_id, service_id, start_time, end_time, timezone, service_price, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        salon_id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        staff_id:
+          type: string
+          format: uuid
+        service_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          example: "America/New_York"
+        service_price:
+          type: number
+          minimum: 0
+        deposit_paid:
+          type: number
+          minimum: 0
+        total_paid:
+          type: number
+          minimum: 0
+        status:
+          type: string
+          enum: [CONFIRMED, PENDING, CANCELLED, NO_SHOW, COMPLETED, IN_PROGRESS]
+        customer_notes:
+          type: string
+          maxLength: 500
+        staff_notes:
+          type: string
+          maxLength: 500
+        cancellation_reason:
+          type: string
+          maxLength: 200
+        reminder_sent:
+          type: boolean
+        confirmation_sent:
+          type: boolean
+        created_by_user_id:
+          type: string
+          format: uuid
+
+    AppointmentCreate:
+      type: object
+      required: [customer_id, staff_id, service_id, start_time]
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+        staff_id:
+          type: string
+          format: uuid
+        service_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        customer_notes:
+          type: string
+          maxLength: 500
+
+    AppointmentUpdate:
+      type: object
+      properties:
+        start_time:
+          type: string
+          format: date-time
+        staff_id:
+          type: string
+          format: uuid
+        customer_notes:
+          type: string
+          maxLength: 500
+        staff_notes:
+          type: string
+          maxLength: 500
+        status:
+          type: string
+          enum: [CONFIRMED, PENDING, CANCELLED, NO_SHOW, COMPLETED, IN_PROGRESS]
+        cancellation_reason:
+          type: string
+          maxLength: 200
+
+    TimeBlock:
+      type: object
+      required: [id, staff_id, start_time, end_time, title, block_type]
+      properties:
+        id:
+          type: string
+          format: uuid
+        staff_id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        block_type:
+          type: string
+          enum: [BREAK, LUNCH, MEETING, TRAINING, PERSONAL, MAINTENANCE]
+        is_recurring:
+          type: boolean
+        is_active:
+          type: boolean
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+    PaginatedResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: {}
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              minimum: 1
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 100
+            total:
+              type: integer
+              minimum: 0
+            pages:
+              type: integer
+              minimum: 0
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: User registration
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, first_name, last_name, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [OWNER, STAFF, CUSTOMER]
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      responses:
+        '200':
+          description: Logout successful
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # Salon endpoints
+  /salons:
+    get:
+      tags: [Salons]
+      summary: Get user's salons
+      responses:
+        '200':
+          description: List of salons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Salon'
+
+    post:
+      tags: [Salons]
+      summary: Create new salon
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, email, address_line1, city, state, postal_code, country, timezone]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                website:
+                  type: string
+                address_line1:
+                  type: string
+                address_line2:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                postal_code:
+                  type: string
+                country:
+                  type: string
+                timezone:
+                  type: string
+                business_hours:
+                  $ref: '#/components/schemas/BusinessHours'
+      responses:
+        '201':
+          description: Salon created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Salon'
+
+  /salons/{salonId}:
+    get:
+      tags: [Salons]
+      summary: Get salon by ID
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Salon details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Salon'
+
+    put:
+      tags: [Salons]
+      summary: Update salon
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Salon'
+      responses:
+        '200':
+          description: Salon updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Salon'
+
+  # Staff endpoints
+  /salons/{salonId}/staff:
+    get:
+      tags: [Staff]
+      summary: Get salon staff
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of staff members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Staff'
+
+    post:
+      tags: [Staff]
+      summary: Add staff member
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, email, position, color_code]
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                employee_id:
+                  type: string
+                position:
+                  type: string
+                hire_date:
+                  type: string
+                  format: date
+                hourly_rate:
+                  type: number
+                commission_rate:
+                  type: number
+                color_code:
+                  type: string
+                can_login:
+                  type: boolean
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Staff member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+
+  /salons/{salonId}/staff/{staffId}:
+    get:
+      tags: [Staff]
+      summary: Get staff member
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staff member details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+
+    put:
+      tags: [Staff]
+      summary: Update staff member
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Staff'
+      responses:
+        '200':
+          description: Staff member updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+
+    delete:
+      tags: [Staff]
+      summary: Deactivate staff member
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staff member deactivated
+
+  # Customer endpoints
+  /salons/{salonId}/customers:
+    get:
+      tags: [Customers]
+      summary: Get salon customers
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated list of customers
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Customer'
+
+    post:
+      tags: [Customers]
+      summary: Add customer
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name]
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                date_of_birth:
+                  type: string
+                  format: date
+                notes:
+                  type: string
+                allergies:
+                  type: string
+                marketing_consent:
+                  type: boolean
+                preferred_contact:
+                  type: string
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /salons/{salonId}/customers/{customerId}:
+    get:
+      tags: [Customers]
+      summary: Get customer
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+    put:
+      tags: [Customers]
+      summary: Update customer
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+      responses:
+        '200':
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  # Service endpoints
+  /salons/{salonId}/services:
+    get:
+      tags: [Services]
+      summary: Get salon services
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+
+    post:
+      tags: [Services]
+      summary: Add service
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category, duration_minutes, price, color_code]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                duration_minutes:
+                  type: integer
+                price:
+                  type: number
+                buffer_before_minutes:
+                  type: integer
+                buffer_after_minutes:
+                  type: integer
+                color_code:
+                  type: string
+                requires_deposit:
+                  type: boolean
+                deposit_amount:
+                  type: number
+      responses:
+        '201':
+          description: Service created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+
+  # Appointment endpoints
+  /salons/{salonId}/appointments:
+    get:
+      tags: [Appointments]
+      summary: Get salon appointments
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: staff_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+
+    post:
+      tags: [Appointments]
+      summary: Create appointment
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentCreate'
+      responses:
+        '201':
+          description: Appointment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '409':
+          description: Appointment conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /salons/{salonId}/appointments/{appointmentId}:
+    get:
+      tags: [Appointments]
+      summary: Get appointment
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Appointment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+
+    put:
+      tags: [Appointments]
+      summary: Update appointment
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentUpdate'
+      responses:
+        '200':
+          description: Appointment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+
+    delete:
+      tags: [Appointments]
+      summary: Cancel appointment
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cancellation_reason:
+                  type: string
+      responses:
+        '200':
+          description: Appointment cancelled
+
+  # Availability endpoints
+  /salons/{salonId}/availability:
+    get:
+      tags: [Availability]
+      summary: Check staff availability
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: service_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: staff_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Available time slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    staff_id:
+                      type: string
+                      format: uuid
+                    start_time:
+                      type: string
+                      format: date-time
+                    end_time:
+                      type: string
+                      format: date-time
+
+  # Time block endpoints
+  /salons/{salonId}/staff/{staffId}/time-blocks:
+    get:
+      tags: [TimeBlocks]
+      summary: Get staff time blocks
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of time blocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeBlock'
+
+    post:
+      tags: [TimeBlocks]
+      summary: Create time block
+      parameters:
+        - name: salonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: staffId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start_time, end_time, title, block_type]
+              properties:
+                start_time:
+                  type: string
+                  format: date-time
+                end_time:
+                  type: string
+                  format: date-time
+                title:
+                  type: string
+                description:
+                  type: string
+                block_type:
+                  type: string
+                is_recurring:
+                  type: boolean
+      responses:
+        '201':
+          description: Time block created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeBlock'
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Salons
+    description: Salon management
+  - name: Staff
+    description: Staff member management
+  - name: Customers
+    description: Customer management
+  - name: Services
+    description: Service catalog management
+  - name: Appointments
+    description: Appointment booking and management
+  - name: Availability
+    description: Staff and time availability
+  - name: TimeBlocks
+    description: Staff time blocking
